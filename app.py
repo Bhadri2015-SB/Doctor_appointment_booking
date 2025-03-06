@@ -4,7 +4,7 @@ from typing_extensions import TypedDict, List, Optional
 # from langgraph.prebuilt import tool
 import os
 from pdf2image import convert_from_path
-from paddleocr import PaddleOCR
+# from paddleocr import PaddleOCR
 from langchain_groq import ChatGroq
 from langchain.schema import HumanMessage, SystemMessage
 import json
