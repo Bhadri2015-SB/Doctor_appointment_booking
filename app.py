@@ -3,8 +3,8 @@ import dotenv
 from typing_extensions import TypedDict, List, Optional
 # from langgraph.prebuilt import tool
 import os
-from pdf2image import convert_from_path
-from paddleocr import PaddleOCR
+# from pdf2image import convert_from_path
+# from paddleocr import PaddleOCR
 from langchain_groq import ChatGroq
 from langchain.schema import HumanMessage, SystemMessage
 import json
@@ -25,10 +25,22 @@ class State(TypedDict):
     name: Optional[str]
     number: Optional[int]
     gender: Optional[str]
+    date_of_birth:Optional[date]
     problem: Optional[str]
+    forWhom:Optional[str]
+    appointment_time: Optional[time]
+    insurance_info:Optional[str]
+    insurance_provider:Optional[str]
+    insurance_id:Optional[str]
+    other_medical_issue:Optional[str]
+    medications:Optional[str]
+    past_surgeries:Optional[str]
+    special_need:Optional[str]
+    emergency_contact_name:Optional[str]
+    emergency_relationship:Optional[str]
+    emergency_relation_phone:Optional[str]
     doctor: Optional[str]
     appointment_date: Optional[date]
-    appointment_time: Optional[time]
     problem_details: Optional[str]=None
 
 #create graph
@@ -44,6 +56,7 @@ appointment={'arun':None,'guru':None,'jay':None,'mugil':None}
 class GetPatientDetail(BaseModel):
     """Extract problem name and doctor for the patient to concelt"""
     name: str=Field(description="name of patient")
+    #date_of_birth:date=Field(description="Date of birth of the patient")
     number: int=Field(description="mobil number of patient which has 10 digits")
     gender: str=Field(description="gender of patient")
     problem: str=Field(description="problem name that the patient is facing")
@@ -64,12 +77,14 @@ appointment_structure = llm.with_structured_output(AppointmentBooking, method='j
 #pstient details node
 def patient_detail(state: State):
     print("\nHi! This is to book an appointment with doctor\n")
-    name=input("\nPlease enter your name: ")
-    number=input("\nPlease enter the mobile number: ")
-    gender=input("\nEnter gender: ")
-    problem=input("\nWhat problem you have: ")
+    name=input("Great to hear! May i know your name: ")
+    dob=input(f"Hai {name} could you provide your date of birth?")
+    number=input(f"Hai {name} please enter the mobile number: ")
+    gender=input(f"Lets enter our gender {name}: ")
+    #forWhom=input(f"Thank you is {name} the patient himself or this appoinment for someone else?")
+    problem=input("Could you tell me the reason for your visit?")
 
-    system_prompt="You are assistent to help patient to find the right doctor to consult from the list of doctor given and the response must be in JSON format with 'name', 'number','gender','problem' and 'doctor' as a keys"
+    system_prompt = "You are an assistant to help patients find the right doctor to consult from the list of doctors given. The response must be in JSON format with 'name', 'number', 'gender', 'problem', and 'doctor' as keys. Use json format for the response."
     human_Message=f"the {gender}(gender) person whose name is {name} has a {problem} and the person's mobile number is{number}. Find the doctor name from the list {doctor_list} the patient need to consult"
     messages=[SystemMessage(content=system_prompt),HumanMessage(content=human_Message)]
 
@@ -77,7 +92,7 @@ def patient_detail(state: State):
     print("\nDoctor: ", result.doctor)
     print("\nProblem: ", result.problem)
 
-    return {"name":result.name, "number": result.number,"gender" :result.gender,"problem":result.problem,"doctor":result.doctor}
+    return {"name":result.name,"dob":dob, "number": result.number,"gender" :result.gender,"problem":result.problem,"doctor":result.doctor}
 
 def appointment_booking(state: State):
     date=input("\nPlease enter the appointment date: ")
@@ -112,6 +127,20 @@ def appointment_booking(state: State):
 
     return {"appointment_date":result.appointment_date, "appointment_time": result.appointment_time}
 
+def insurance_details(state:State):
+    insurance_info=input("\nPlease enter your insurance information:")
+    insurance_provider=input("\nPlease enter your insurance provider name:")
+    insurance_id=input("\nPlease enter your insurance ID:")
+
+    return {"insurance_info":insurance_info,"insurance_provider":insurance_provider,"insurance_id":insurance_id}
+
+def emergency_details(state:State):
+    emergency_contact_name=input(f"Could you provide your emergency contact name? ")
+    emergency_relationship=input(f"Thank you.What is {emergency_contact_name}'s relationship to you?")
+    emergency_relation_phone=input(f"Could you provide {emergency_contact_name}'s phone number? ")
+
+    return {"emergency_contact_name":emergency_contact_name,"emergency_relationship":emergency_relationship,"emergency_relation_phone":emergency_relation_phone}
+
 def summary(state: State):
     print("\n--------------------Summary-----------------\n")
     print("state: ", state)
@@ -121,12 +150,16 @@ def summary(state: State):
 #add node
 graph.add_node("patient_detail", patient_detail)
 graph.add_node("appointment_booking", appointment_booking)
+graph.add_node("insurance_details",insurance_details)
+graph.add_node("emergency_details",emergency_details)
 graph.add_node("summary", summary)
 
 #add edge
 graph.set_entry_point("patient_detail")
 graph.add_edge("patient_detail","appointment_booking")
-graph.add_edge("appointment_booking","summary")
+graph.add_edge("appointment_booking","insurance_details")
+graph.add_edge("insurance_details","emergency_details")
+graph.add_edge("emergency_details","summary")
 graph.add_edge("summary",END)
 build=graph.compile()
 
