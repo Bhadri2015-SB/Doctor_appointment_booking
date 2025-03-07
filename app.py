@@ -25,7 +25,7 @@ class State(TypedDict):
     name: Optional[str]
     number: Optional[int]
     gender: Optional[str]
-    date_of_birth:Optional[date]
+    age:Optional[int]
     problem: Optional[str]
     forWhom:Optional[str]
     appointment_time: Optional[time]
@@ -78,21 +78,22 @@ appointment_structure = llm.with_structured_output(AppointmentBooking, method='j
 def patient_detail(state: State):
     print("\nHi! This is to book an appointment with doctor\n")
     name=input("Great to hear! May i know your name: ")
-    dob=input(f"Hai {name} could you provide your date of birth?")
+    # dob=input(f"Hai {name} could you provide your date of birth?")
     number=input(f"Hai {name} please enter the mobile number: ")
-    gender=input(f"Lets enter our gender {name}: ")
-    #forWhom=input(f"Thank you is {name} the patient himself or this appoinment for someone else?")
+    gender=input(f"Enter your gender {name}: ")
+    forWhom=input(f"The appoinment is for yourself or for who?")
+    age=input(f"Could you provide the age of the patient?")
     problem=input("Could you tell me the reason for your visit?")
 
     system_prompt = "You are an assistant to help patients find the right doctor to consult from the list of doctors given. The response must be in JSON format with 'name', 'number', 'gender', 'problem', and 'doctor' as keys. Use json format for the response."
-    human_Message=f"the {gender}(gender) person whose name is {name} has a {problem} and the person's mobile number is{number}. Find the doctor name from the list {doctor_list} the patient need to consult"
+    human_Message=f"the {gender}(gender) person whose name is {name} booking the appointment for {forWhom} whose age is {age} has a {problem} and the person's mobile number is{number}. Find the doctor name from the list {doctor_list} the patient need to consult"
     messages=[SystemMessage(content=system_prompt),HumanMessage(content=human_Message)]
 
     result=patient_structured_llm.invoke(messages)
     print("\nDoctor: ", result.doctor)
     print("\nProblem: ", result.problem)
 
-    return {"name":result.name,"dob":dob, "number": result.number,"gender" :result.gender,"problem":result.problem,"doctor":result.doctor}
+    return {"name":result.name,"age":age, "number": result.number,"gender" :result.gender,"problem":result.problem,"doctor":result.doctor}
 
 def appointment_booking(state: State):
     date=input("\nPlease enter the appointment date: ")
@@ -128,15 +129,30 @@ def appointment_booking(state: State):
     return {"appointment_date":result.appointment_date, "appointment_time": result.appointment_time}
 
 def insurance_details(state:State):
+    decide=input("\nWould you like to provide insurence detail: ")
+    if decide !='yes':
+        return{}
     insurance_info=input("\nPlease enter your insurance information:")
     insurance_provider=input("\nPlease enter your insurance provider name:")
     insurance_id=input("\nPlease enter your insurance ID:")
 
     return {"insurance_info":insurance_info,"insurance_provider":insurance_provider,"insurance_id":insurance_id}
 
+def past_details(state:State):
+    decide=input("\nWould you like to provide medication detail: ")
+    if decide !='yes':
+        return{}
+    other_issue=input("\nWhat are the other medical issue patient have: ")
+    medication=input("\nWhat medications do you taking currently: ")
+    past_surgeries=input("\nHave you undergone any surgeries: ")
+
+    return {'other_medical_issue':other_issue,
+    'medications':medication,
+    'past_surgeries':past_surgeries}
+
 def emergency_details(state:State):
     emergency_contact_name=input(f"Could you provide your emergency contact name? ")
-    emergency_relationship=input(f"Thank you.What is {emergency_contact_name}'s relationship to you?")
+    emergency_relationship=input(f"Thank you. What is {emergency_contact_name}'s relationship to you?")
     emergency_relation_phone=input(f"Could you provide {emergency_contact_name}'s phone number? ")
 
     return {"emergency_contact_name":emergency_contact_name,"emergency_relationship":emergency_relationship,"emergency_relation_phone":emergency_relation_phone}
@@ -152,12 +168,18 @@ graph.add_node("patient_detail", patient_detail)
 graph.add_node("appointment_booking", appointment_booking)
 graph.add_node("insurance_details",insurance_details)
 graph.add_node("emergency_details",emergency_details)
+graph.add_node("past_details",past_details)
 graph.add_node("summary", summary)
+
+#function for conditional edge
+
+
 
 #add edge
 graph.set_entry_point("patient_detail")
 graph.add_edge("patient_detail","appointment_booking")
-graph.add_edge("appointment_booking","insurance_details")
+graph.add_edge("appointment_booking","past_details")
+graph.add_edge("past_details","insurance_details")
 graph.add_edge("insurance_details","emergency_details")
 graph.add_edge("emergency_details","summary")
 graph.add_edge("summary",END)
