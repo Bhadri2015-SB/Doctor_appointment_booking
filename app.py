@@ -10,6 +10,7 @@ from langchain.schema import HumanMessage, SystemMessage
 import json
 from langgraph.graph import StateGraph, END
 from pydantic import BaseModel, Field
+import mailing
 
 dotenv.load_dotenv()
 GROQ_API = os.getenv("GROQ_API")
@@ -27,6 +28,7 @@ class State(TypedDict):
     gender: Optional[str]
     age:Optional[int]
     problem: Optional[str]
+    mail_id: Optional[str]
     forWhom:Optional[str]
     appointment_time: Optional[time]
     insurance_info:Optional[str]
@@ -128,6 +130,15 @@ def appointment_booking(state: State):
 
     return {"appointment_date":result.appointment_date, "appointment_time": result.appointment_time}
 
+def mail(state:State):
+    to_email=input("\nPlease enter your email id: ")
+    info=f"Your appointment is booked on {state['appointment_date']} at {state['appointment_time']} with {state['doctor']}"
+    doctor_info=f"Your appointment is booked on {state['appointment_date']} at {state['appointment_time']} with {state['name']} who has a {state['problem']} problem"
+    mailing.send_email(to_email,info)
+    # mailing.send_email('doc@mail.com',doctor_info)
+    print ("\nMail sent successfully")
+    return {'mail_id':to_email}
+
 def insurance_details(state:State):
     decide=input("\nWould you like to provide insurence detail: ")
     if decide !='yes':
@@ -166,6 +177,7 @@ def summary(state: State):
 #add node
 graph.add_node("patient_detail", patient_detail)
 graph.add_node("appointment_booking", appointment_booking)
+graph.add_node("mail", mail)
 graph.add_node("insurance_details",insurance_details)
 graph.add_node("emergency_details",emergency_details)
 graph.add_node("past_details",past_details)
@@ -178,7 +190,8 @@ graph.add_node("summary", summary)
 #add edge
 graph.set_entry_point("patient_detail")
 graph.add_edge("patient_detail","appointment_booking")
-graph.add_edge("appointment_booking","past_details")
+graph.add_edge("appointment_booking","mail")
+graph.add_edge("mail","past_details")
 graph.add_edge("past_details","insurance_details")
 graph.add_edge("insurance_details","emergency_details")
 graph.add_edge("emergency_details","summary")
